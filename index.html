@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentiment Analysis Dashboard</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f4f6fb;color:#1f2937}
+header{background:white;padding:25px 18px;border-bottom:1px solid #ddd}
+h1{margin:0 0 8px;font-size:28px} h2{margin-top:0}
+header p{margin:0;color:#666}
+.container{max-width:900px;margin:22px auto;padding:0 15px}
+.card,.stat{background:#fff;border:1px solid #ddd;border-radius:15px;padding:20px;margin-bottom:18px;box-shadow:0 3px 12px #0000000d}
+textarea{width:100%;min-height:140px;padding:14px;border:1px solid #bbb;border-radius:10px;font-size:16px}
+.actions,.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px}
+button{border:0;border-radius:9px;padding:12px 18px;background:#4f46e5;color:white;font-weight:bold;font-size:15px}
+.secondary{background:#222}.error{color:#d00;min-height:20px}
+.hidden{display:none}
+.result{margin-top:18px;padding:18px;background:#f8fafc;border-radius:10px}
+.label{display:block;color:#666;font-size:13px;margin-bottom:5px}
+.result strong{font-size:22px}
+.progress{height:12px;background:#ddd;border-radius:20px;overflow:hidden;margin-top:12px}
+#scoreBar{height:100%;width:0;background:#4f46e5}
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat span{display:block;color:#666}.stat strong{font-size:28px}
+.positive strong{color:#159447}.neutral strong{color:#b87900}.negative strong{color:#d22}
+.bar-row{display:grid;grid-template-columns:75px 1fr 45px;gap:10px;align-items:center;margin:14px 0}
+.bar-bg{height:15px;background:#ddd;border-radius:20px;overflow:hidden}.bar{height:100%;width:0}
+.pbar{background:#22c55e}.nbar{background:#f59e0b}.xbar{background:#ef4444}
+.history-item{border:1px solid #ddd;border-radius:10px;padding:14px;margin:10px 0}
+.badge{float:right;padding:4px 9px;border-radius:15px;font-size:12px;font-weight:bold}
+.bp{background:#dcfce7;color:#166534}.bn{background:#fef3c7;color:#92400e}.bx{background:#fee2e2;color:#991b1b}
+.empty{text-align:center;color:#888}
+footer{text-align:center;color:#777;padding:25px}
+@media(max-width:650px){.summary-grid{grid-template-columns:repeat(2,1fr)}.actions,.section-head{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+<h1>Sentiment Analysis Dashboard</h1>
+<p>Analyze product reviews with sentiment classification and scoring.</p>
+</header>
+
+<main class="container">
+<section class="card">
+<h2>Enter Product Review</h2>
+<textarea id="review" placeholder="Type a product review here..."></textarea>
+<div class="actions">
+<span id="count">0 / 1000</span>
+<button id="analyze">Analyze Review</button>
+</div>
+<p id="error" class="error"></p>
+
+<div id="result" class="result hidden">
+<span class="label">Sentiment</span>
+<strong id="sentiment"></strong>
+<br><br>
+<span class="label">Sentiment Score</span>
+<strong id="score"></strong>
+<div class="progress"><div id="scoreBar"></div></div>
+</div>
+</section>
+
+<section class="summary-grid">
+<div class="stat"><span>Total Reviews</span><strong id="total">0</strong></div>
+<div class="stat positive"><span>Positive</span><strong id="pos">0</strong></div>
+<div class="stat neutral"><span>Neutral</span><strong id="neu">0</strong></div>
+<div class="stat negative"><span>Negative</span><strong id="neg">0</strong></div>
+</section>
+
+<section class="card">
+<div class="section-head"><h2>Sentiment Summary</h2><button class="secondary" id="clear">Clear History</button></div>
+<div class="bar-row"><span>Positive</span><div class="bar-bg"><div id="pbar" class="bar pbar"></div></div><b id="pp">0%</b></div>
+<div class="bar-row"><span>Neutral</span><div class="bar-bg"><div id="nbar" class="bar nbar"></div></div><b id="np">0%</b></div>
+<div class="bar-row"><span>Negative</span><div class="bar-bg"><div id="xbar" class="bar xbar"></div></div><b id="xp">0%</b></div>
+</section>
+
+<section class="card">
+<h2>Review History</h2>
+<div id="history"></div>
+<p id="empty" class="empty">No reviews analyzed yet.</p>
+</section>
+</main>
+<footer>College Assignment • Sentiment Analysis Dashboard</footer>
+
+<script>
+(function(){
+const positive=["good","great","excellent","amazing","awesome","love","loved","perfect","best","happy","satisfied","recommend","fast","quality","comfortable","beautiful","worth","fantastic","wonderful","easy","nice","useful"];
+const negative=["bad","poor","terrible","awful","hate","hated","worst","disappointed","disappointing","slow","broken","cheap","waste","problem","problems","difficult","uncomfortable","useless","damage","damaged","late","refund","defective"];
+let reviews=[];
+try{reviews=JSON.parse(localStorage.getItem("sentimentReviews")||"[]")}catch(e){reviews=[]}
+
+const $=id=>document.getElementById(id);
+$("review").addEventListener("input",()=>{$("count").textContent=$("review").value.length+" / 1000"});
+
+function analyze(text){
+let words=text.toLowerCase().replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(Boolean);
+let p=0,n=0;
+words.forEach(w=>{if(positive.includes(w))p++;if(negative.includes(w))n++});
+if(p===0&&n===0)return {s:"Neutral",v:50};
+if(p>n)return {s:"Positive",v:Math.min(98,Math.round(55+p/(p+n)*43))};
+if(n>p)return {s:"Negative",v:Math.max(2,Math.round(45-n/(p+n)*43))};
+return {s:"Neutral",v:50};
+}
+
+function safe(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
+function render(){
+let p=0,n=0,x=0;
+reviews.forEach(r=>{if(r.s==="Positive")p++;else if(r.s==="Negative")x++;else n++});
+$("total").textContent=reviews.length;$("pos").textContent=p;$("neu").textContent=n;$("neg").textContent=x;
+let t=reviews.length||1;
+$("pbar").style.width=(p/t*100)+"%";$("nbar").style.width=(n/t*100)+"%";$("xbar").style.width=(x/t*100)+"%";
+$("pp").textContent=Math.round(p/t*100)+"%";$("np").textContent=Math.round(n/t*100)+"%";$("xp").textContent=Math.round(x/t*100)+"%";
+$("history").innerHTML="";
+$("empty").style.display=reviews.length?"none":"block";
+reviews.slice().reverse().forEach(r=>{
+let cls=r.s==="Positive"?"bp":r.s==="Negative"?"bx":"bn";
+$("history").innerHTML+=`<div class="history-item"><span class="badge ${cls}">${r.v}%</span><b>${r.s}</b><p>${safe(r.text)}</p><small>${safe(r.date)}</small></div>`;
+});
+}
+
+$("analyze").addEventListener("click",function(){
+let text=$("review").value.trim();
+$("error").textContent="";
+if(!text){$("error").textContent="Please enter a product review before analyzing.";return}
+let a=analyze(text);
+$("sentiment").textContent=a.s;$("score").textContent=a.v+"%";$("scoreBar").style.width=a.v+"%";
+$("result").classList.remove("hidden");
+reviews.push({text:text,s:a.s,v:a.v,date:new Date().toLocaleString()});
+try{localStorage.setItem("sentimentReviews",JSON.stringify(reviews))}catch(e){}
+$("review").value="";$("count").textContent="0 / 1000";render();
+});
+
+$("clear").addEventListener("click",function(){
+if(confirm("Clear all review history?")){reviews=[];try{localStorage.removeItem("sentimentReviews")}catch(e){}render();$("result").classList.add("hidden")}
+});
+render();
+})();
+</script>
+</body>
+</html>
